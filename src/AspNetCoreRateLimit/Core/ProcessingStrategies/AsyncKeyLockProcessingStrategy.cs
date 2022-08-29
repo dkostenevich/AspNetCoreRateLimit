@@ -4,13 +4,12 @@ using System.Threading.Tasks;
 
 namespace AspNetCoreRateLimit
 {
-    public class AsyncKeyLockProcessingStrategy : ProcessingStrategy
+    public class AsyncKeyLockProcessingStrategy : IProcessingStrategy
     {
         private readonly IRateLimitCounterStore _counterStore;
         private readonly IRateLimitConfiguration _config;
 
         public AsyncKeyLockProcessingStrategy(IRateLimitCounterStore counterStore, IRateLimitConfiguration config)
-            : base(config)
         {
             _counterStore = counterStore;
             _config = config;
@@ -19,7 +18,7 @@ namespace AspNetCoreRateLimit
         /// The key-lock used for limiting requests.
         private static readonly AsyncKeyLock AsyncLock = new AsyncKeyLock();
 
-        public override async Task<RateLimitCounter> ProcessRequestAsync(ClientRequestIdentity requestIdentity, RateLimitRule rule, ICounterKeyBuilder counterKeyBuilder, RateLimitOptions rateLimitOptions, CancellationToken cancellationToken = default)
+        public async Task<RateLimitCounter> ProcessRequestAsync(ClientRequestIdentity requestIdentity, RateLimitRule rule, ICounterKeyBuilder counterKeyBuilder, RateLimitOptions rateLimitOptions, CancellationToken cancellationToken = default)
         {
             var increment = _config.RateIncrementer?.Invoke() ?? 1;
 
@@ -29,7 +28,7 @@ namespace AspNetCoreRateLimit
                 Count = increment
             };
 
-            var counterId = BuildCounterKey(requestIdentity, rule, counterKeyBuilder, rateLimitOptions);
+            var counterId = counterKeyBuilder.Build(requestIdentity, rule);
 
             // serial reads and writes on same key
             using (await AsyncLock.WriterLockAsync(counterId).ConfigureAwait(false))

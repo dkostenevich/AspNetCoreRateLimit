@@ -7,10 +7,10 @@
     <AssemblyName>AspNetCoreRateLimit</AssemblyName>
     <PackageId>AspNetCoreRateLimit</PackageId>
     <PackageTags>aspnetcore;rate-limit;throttle</PackageTags>
-    <PackageProjectUrl>https://github.com/stefanprodan/AspNetCoreRateLimit</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/dkostenevich/AspNetCoreRateLimit</PackageProjectUrl>
     <PackageLicense>http://opensource.org/licenses/MIT</PackageLicense>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/stefanprodan/AspNetCoreRateLimit</RepositoryUrl>
+    <RepositoryUrl>https://github.com/dkostenevich/AspNetCoreRateLimit</RepositoryUrl>
     <LangVersion>9</LangVersion>
     <Version>4.0.2</Version>
     <SignAssembly>true</SignAssembly>

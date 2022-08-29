@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,32 +9,49 @@ namespace AspNetCoreRateLimit
 {
     public abstract class RateLimitProcessor
     {
-        private readonly RateLimitOptions _options;
+        protected IProcessingStrategy ProcessingStrategy { get; }
+        protected IRateLimitCounterStore RateLimitCounterStore { get; }
+        protected RateLimitOptions Options { get; }
 
-        protected RateLimitProcessor(RateLimitOptions options)
+        protected RateLimitProcessor(
+            RateLimitOptions options,
+            IProcessingStrategy processingStrategy,
+            IRateLimitCounterStore rateLimitCounterStore
+        )
         {
-            _options = options;
+            ProcessingStrategy = processingStrategy;
+            RateLimitCounterStore = rateLimitCounterStore;
+            Options = options;
         }
 
+        protected abstract ICounterKeyBuilder CounterKeyBuilder { get; }
+
+        public abstract Task<IEnumerable<RateLimitRule>> GetMatchingRulesAsync(ClientRequestIdentity identity,
+            CancellationToken cancellationToken = default);
+
+        public async Task<RateLimitCounter> ProcessRequestAsync(ClientRequestIdentity requestIdentity, RateLimitRule rule, CancellationToken cancellationToken = default)
+        {
+            return await ProcessingStrategy.ProcessRequestAsync(requestIdentity, rule, CounterKeyBuilder, Options, cancellationToken);
+        }
 
         public virtual bool IsWhitelisted(ClientRequestIdentity requestIdentity)
         {
-            if (_options.ClientWhitelist != null && _options.ClientWhitelist.Contains(requestIdentity.ClientId))
+            if (Options.ClientWhitelist != null && Options.ClientWhitelist.Contains(requestIdentity.ClientId))
             {
                 return true;
             }
 
-            if (_options.IpWhitelist != null && IpParser.ContainsIp(_options.IpWhitelist, requestIdentity.ClientIp))
+            if (Options.IpWhitelist != null && IpParser.ContainsIp(Options.IpWhitelist, requestIdentity.ClientIp))
             {
                 return true;
             }
 
-            if (_options.EndpointWhitelist != null && _options.EndpointWhitelist.Any())
+            if (Options.EndpointWhitelist != null && Options.EndpointWhitelist.Any())
             {
-                string path = _options.EnableRegexRuleMatching ? $".+:{requestIdentity.Path}" : $"*:{requestIdentity.Path}";
+                string path = Options.EnableRegexRuleMatching ? $".+:{requestIdentity.Path}" : $"*:{requestIdentity.Path}";
 
-                if (_options.EndpointWhitelist.Any(x => $"{requestIdentity.HttpVerb}:{requestIdentity.Path}".IsUrlMatch(x, _options.EnableRegexRuleMatching)) ||
-                        _options.EndpointWhitelist.Any(x => path.IsUrlMatch(x, _options.EnableRegexRuleMatching)))
+                if (Options.EndpointWhitelist.Any(x => $"{requestIdentity.HttpVerb}:{requestIdentity.Path}".IsUrlMatch(x, Options.EnableRegexRuleMatching)) ||
+                        Options.EndpointWhitelist.Any(x => path.IsUrlMatch(x, Options.EnableRegexRuleMatching)))
                     return true;
             }
 
@@ -74,17 +89,17 @@ namespace AspNetCoreRateLimit
 
             if (rules?.Any() == true)
             {
-                if (_options.EnableEndpointRateLimiting)
+                if (Options.EnableEndpointRateLimiting)
                 {
                     // search for rules with endpoints like "*" and "*:/matching_path"
 
-                    string path = _options.EnableRegexRuleMatching ? $".+:{identity.Path}" : $"*:{identity.Path}";
+                    string path = Options.EnableRegexRuleMatching ? $".+:{identity.Path}" : $"*:{identity.Path}";
 
-                    var pathLimits = rules.Where(r => path.IsUrlMatch(r.Endpoint, _options.EnableRegexRuleMatching));
+                    var pathLimits = rules.Where(r => path.IsUrlMatch(r.Endpoint, Options.EnableRegexRuleMatching));
                     limits.AddRange(pathLimits);
 
                     // search for rules with endpoints like "matching_verb:/matching_path"
-                    var verbLimits = rules.Where(r => $"{identity.HttpVerb}:{identity.Path}".IsUrlMatch(r.Endpoint, _options.EnableRegexRuleMatching));
+                    var verbLimits = rules.Where(r => $"{identity.HttpVerb}:{identity.Path}".IsUrlMatch(r.Endpoint, Options.EnableRegexRuleMatching));
                     limits.AddRange(verbLimits);
                 }
                 else
@@ -99,24 +114,24 @@ namespace AspNetCoreRateLimit
             }
 
             // search for matching general rules
-            if (_options.GeneralRules != null)
+            if (Options.GeneralRules != null)
             {
                 var matchingGeneralLimits = new List<RateLimitRule>();
 
-                if (_options.EnableEndpointRateLimiting)
+                if (Options.EnableEndpointRateLimiting)
                 {
                     // search for rules with endpoints like "*" and "*:/matching_path" in general rules
-                    var pathLimits = _options.GeneralRules.Where(r => $"*:{identity.Path}".IsUrlMatch(r.Endpoint, _options.EnableRegexRuleMatching));
+                    var pathLimits = Options.GeneralRules.Where(r => $"*:{identity.Path}".IsUrlMatch(r.Endpoint, Options.EnableRegexRuleMatching));
                     matchingGeneralLimits.AddRange(pathLimits);
 
                     // search for rules with endpoints like "matching_verb:/matching_path" in general rules
-                    var verbLimits = _options.GeneralRules.Where(r => $"{identity.HttpVerb}:{identity.Path}".IsUrlMatch(r.Endpoint, _options.EnableRegexRuleMatching));
+                    var verbLimits = Options.GeneralRules.Where(r => $"{identity.HttpVerb}:{identity.Path}".IsUrlMatch(r.Endpoint, Options.EnableRegexRuleMatching));
                     matchingGeneralLimits.AddRange(verbLimits);
                 }
                 else
                 {
                     //ignore endpoint rules and search for global rules in general rules
-                    var genericLimits = _options.GeneralRules.Where(r => r.Endpoint == "*");
+                    var genericLimits = Options.GeneralRules.Where(r => r.Endpoint == "*");
                     matchingGeneralLimits.AddRange(genericLimits);
                 }
 
@@ -148,12 +163,22 @@ namespace AspNetCoreRateLimit
 
             limits = limits.OrderBy(l => l.PeriodTimespan).ToList();
 
-            if (_options.StackBlockedRequests)
+            if (Options.StackBlockedRequests)
             {
                 limits.Reverse();
             }
 
             return limits;
+        }
+
+        public async Task ResetLimitsAsync(ClientRequestIdentity identity, CancellationToken cancellationToken = default)
+        {
+            var rules = await GetMatchingRulesAsync(identity, cancellationToken);
+            foreach (var rule in rules)
+            {
+                var key = CounterKeyBuilder.Build(identity, rule);
+                await RateLimitCounterStore.RemoveAsync(key, cancellationToken);
+            }
         }
     }
 }

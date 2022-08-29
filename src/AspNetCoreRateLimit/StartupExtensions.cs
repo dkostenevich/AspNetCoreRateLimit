@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using AspNetCoreRateLimit.Core;
+using AspNetCoreRateLimit.Resolvers;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCoreRateLimit
@@ -34,6 +36,14 @@ namespace AspNetCoreRateLimit
             services.AddSingleton<IIpPolicyStore, DistributedCacheIpPolicyStore>();
             services.AddSingleton<IClientPolicyStore, DistributedCacheClientPolicyStore>();
             services.AddSingleton<IRateLimitCounterStore, DistributedCacheRateLimitCounterStore>();
+            return services;
+        }
+
+        public static IServiceCollection AddRateLimiting(this IServiceCollection services)
+        {
+            services.AddSingleton<IIpRateLimitProcessor, IpRateLimitProcessor>();
+            services.AddSingleton<IClientRateLimitProcessor, ClientRateLimitProcessor>();
+            services.AddSingleton<IClientRequestIdentityResolver, ClientRequestIdentityResolver>();
             return services;
         }
 

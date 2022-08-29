@@ -3,29 +3,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AspNetCoreRateLimit.Resolvers;
 using Microsoft.AspNetCore.Http;
 
 namespace AspNetCoreRateLimit
 {
-    public abstract class RateLimitMiddleware<TProcessor>
-        where TProcessor : IRateLimitProcessor
+    public abstract class RateLimitMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly TProcessor _processor;
         private readonly RateLimitOptions _options;
-        private readonly IRateLimitConfiguration _config;
+        private readonly IClientRequestIdentityResolver _identityResolver;
+        private readonly IRateLimitProcessor _processor;
 
         protected RateLimitMiddleware(
             RequestDelegate next,
             RateLimitOptions options,
-            TProcessor processor,
-            IRateLimitConfiguration config)
+            IClientRequestIdentityResolver identityResolver,
+            IRateLimitProcessor processor)
         {
             _next = next;
             _options = options;
+            _identityResolver = identityResolver;
             _processor = processor;
-            _config = config;
-            _config.RegisterResolvers();
         }
 
         public async Task Invoke(HttpContext context)
@@ -38,7 +37,7 @@ namespace AspNetCoreRateLimit
             }
 
             // compute identity from request
-            var identity = await ResolveIdentityAsync(context);
+            var identity = await _identityResolver.Resolve(context);
 
             // check white list
             if (_processor.IsWhitelisted(identity))
@@ -122,48 +121,6 @@ namespace AspNetCoreRateLimit
             }
 
             await _next.Invoke(context);
-        }
-
-        public virtual async Task<ClientRequestIdentity> ResolveIdentityAsync(HttpContext httpContext)
-        {
-            string clientIp = null;
-            string clientId = null;
-
-            if (_config.ClientResolvers?.Any() == true)
-            {
-                foreach (var resolver in _config.ClientResolvers)
-                {
-                    clientId = await resolver.ResolveClientAsync(httpContext);
-
-                    if (!string.IsNullOrEmpty(clientId))
-                    {
-                        break;
-                    }
-                }
-            }
-
-            if (_config.IpResolvers?.Any() == true)
-            {
-                foreach (var resolver in _config.IpResolvers)
-                {
-                    clientIp = resolver.ResolveIp(httpContext);
-
-                    if (!string.IsNullOrEmpty(clientIp))
-                    {
-                        break;
-                    }
-                }
-            }
-            var path = httpContext.Request.Path.ToString().ToLowerInvariant();
-            return new ClientRequestIdentity
-            {
-                ClientIp = clientIp,
-                Path = path == "/"
-                    ? path
-                    : path.TrimEnd('/'),
-                HttpVerb = httpContext.Request.Method.ToLowerInvariant(),
-                ClientId = clientId ?? "anon"
-            };
         }
 
         public virtual Task ReturnQuotaExceededResponse(HttpContext httpContext, RateLimitRule rule, string retryAfter)

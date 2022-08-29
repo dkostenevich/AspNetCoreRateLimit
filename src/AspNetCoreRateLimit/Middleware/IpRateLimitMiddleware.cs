@@ -1,21 +1,22 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using AspNetCoreRateLimit.Core;
+using AspNetCoreRateLimit.Resolvers;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AspNetCoreRateLimit
 {
-    public class IpRateLimitMiddleware : RateLimitMiddleware<IpRateLimitProcessor>
+    public class IpRateLimitMiddleware : RateLimitMiddleware
     {
         private readonly ILogger<IpRateLimitMiddleware> _logger;
 
         public IpRateLimitMiddleware(RequestDelegate next,
-            IProcessingStrategy processingStrategy,
             IOptions<IpRateLimitOptions> options,
-            IIpPolicyStore policyStore,
-            IRateLimitConfiguration config,
+            IIpRateLimitProcessor rateLimitProcessor,
+            IClientRequestIdentityResolver clientRequestIdentityResolver,
             ILogger<IpRateLimitMiddleware> logger
         )
-            : base(next, options?.Value, new IpRateLimitProcessor(options?.Value, policyStore, processingStrategy), config)
+            : base(next, options?.Value, clientRequestIdentityResolver, rateLimitProcessor)
         {
             _logger = logger;
         }

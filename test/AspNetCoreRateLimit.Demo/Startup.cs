@@ -34,6 +34,7 @@ namespace AspNetCoreRateLimit.Demo
             //services.AddDistributedRateLimiting<AsyncKeyLockProcessingStrategy>();
             //services.AddDistributedRateLimiting<RedisProcessingStrategy>();
             //services.AddRedisRateLimiting();
+            services.AddRateLimiting();
 
             services.AddMvc((options) =>
             {

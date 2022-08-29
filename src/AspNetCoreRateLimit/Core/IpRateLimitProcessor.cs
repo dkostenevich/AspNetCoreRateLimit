@@ -2,30 +2,37 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AspNetCoreRateLimit.Core;
+using Microsoft.Extensions.Options;
 
 namespace AspNetCoreRateLimit
 {
-    public class IpRateLimitProcessor : RateLimitProcessor, IRateLimitProcessor
+    public class IpRateLimitProcessor : RateLimitProcessor, IIpRateLimitProcessor
     {
         private readonly IpRateLimitOptions _options;
         private readonly IRateLimitStore<IpRateLimitPolicies> _policyStore;
-        private readonly IProcessingStrategy _processingStrategy;
-        private readonly ICounterKeyBuilder _counterKeyBuilder;
 
         public IpRateLimitProcessor(
-                IpRateLimitOptions options,
+                IOptions<IpRateLimitOptions> options,
                 IIpPolicyStore policyStore,
-                IProcessingStrategy processingStrategy)
-            : base(options)
+                IProcessingStrategy processingStrategy,
+                IRateLimitCounterStore rateLimitCounterStore,
+                IRateLimitConfiguration configuration)
+            : base(
+                options.Value,
+                processingStrategy,
+                rateLimitCounterStore
+            )
         {
-            _options = options;
+            _options = options.Value;
             _policyStore = policyStore;
-            _counterKeyBuilder = new IpCounterKeyBuilder(options);
-            _processingStrategy = processingStrategy;
+
+            CounterKeyBuilder = new RateLimitCounterKeyBuilder(options.Value, new IpCounterKeyBuilder(options.Value), configuration);
         }
 
+        protected override ICounterKeyBuilder CounterKeyBuilder { get; }
 
-        public async Task<IEnumerable<RateLimitRule>> GetMatchingRulesAsync(ClientRequestIdentity identity, CancellationToken cancellationToken = default)
+        public override async Task<IEnumerable<RateLimitRule>> GetMatchingRulesAsync(ClientRequestIdentity identity, CancellationToken cancellationToken = default)
         {
             var policies = await _policyStore.GetAsync($"{_options.IpPolicyPrefix}", cancellationToken);
 
@@ -43,11 +50,6 @@ namespace AspNetCoreRateLimit
             }
 
             return GetMatchingRules(identity, rules);
-        }
-
-        public async Task<RateLimitCounter> ProcessRequestAsync(ClientRequestIdentity requestIdentity, RateLimitRule rule, CancellationToken cancellationToken = default)
-        {
-            return await _processingStrategy.ProcessRequestAsync(requestIdentity, rule, _counterKeyBuilder, _options, cancellationToken);
         }
     }
 }
