@@ -15,7 +15,7 @@ namespace AspNetCoreRateLimit
         public string Endpoint { get; set; }
 
         /// <summary>
-        /// Rate limit period as in 1s, 1m, 1h
+        /// Rate limit period as in 1s, 1m, 1h, 1w, 1mo, 1y
         /// </summary>
         public string Period { get; set; }
 

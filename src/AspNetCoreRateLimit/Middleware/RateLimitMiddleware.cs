@@ -13,19 +13,18 @@ namespace AspNetCoreRateLimit
         private readonly RequestDelegate _next;
         private readonly RateLimitOptions _options;
         private readonly IClientRequestIdentityResolver _identityResolver;
-        private readonly IRateLimitProcessor _processor;
 
         protected RateLimitMiddleware(
             RequestDelegate next,
             RateLimitOptions options,
-            IClientRequestIdentityResolver identityResolver,
-            IRateLimitProcessor processor)
+            IClientRequestIdentityResolver identityResolver)
         {
             _next = next;
             _options = options;
             _identityResolver = identityResolver;
-            _processor = processor;
         }
+
+        protected abstract IRateLimitProcessor GetProcessor(ClientRequestIdentity identity);
 
         public async Task Invoke(HttpContext context)
         {
@@ -38,22 +37,23 @@ namespace AspNetCoreRateLimit
 
             // compute identity from request
             var identity = await _identityResolver.Resolve(context);
+            var processor = GetProcessor(identity);
 
             // check white list
-            if (_processor.IsWhitelisted(identity))
+            if (processor.IsWhitelisted(identity))
             {
                 await _next.Invoke(context);
                 return;
             }
 
-            var rules = await _processor.GetMatchingRulesAsync(identity, context.RequestAborted);
+            var rules = await processor.GetMatchingRulesAsync(identity, context.RequestAborted);
 
             var rulesDict = new Dictionary<RateLimitRule, RateLimitCounter>();
 
             foreach (var rule in rules)
             {
                 // increment counter
-                var rateLimitCounter = await _processor.ProcessRequestAsync(identity, rule, context.RequestAborted);
+                var rateLimitCounter = await processor.ProcessRequestAsync(identity, rule, context.RequestAborted);
 
                 if (rule.Limit > 0)
                 {
@@ -113,7 +113,7 @@ namespace AspNetCoreRateLimit
             if (rulesDict.Any() && !_options.DisableRateLimitHeaders)
             {
                 var rule = rulesDict.OrderByDescending(x => x.Key.PeriodTimespan).FirstOrDefault();
-                var headers = _processor.GetRateLimitHeaders(rule.Value, rule.Key, context.RequestAborted);
+                var headers = processor.GetRateLimitHeaders(rule.Value, rule.Key, context.RequestAborted);
 
                 headers.Context = context;
 

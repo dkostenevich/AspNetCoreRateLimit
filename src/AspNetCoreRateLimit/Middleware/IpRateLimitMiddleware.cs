@@ -8,6 +8,7 @@ namespace AspNetCoreRateLimit
 {
     public class IpRateLimitMiddleware : RateLimitMiddleware
     {
+        private readonly IIpRateLimitProcessor _rateLimitProcessor;
         private readonly ILogger<IpRateLimitMiddleware> _logger;
 
         public IpRateLimitMiddleware(RequestDelegate next,
@@ -16,10 +17,13 @@ namespace AspNetCoreRateLimit
             IClientRequestIdentityResolver clientRequestIdentityResolver,
             ILogger<IpRateLimitMiddleware> logger
         )
-            : base(next, options?.Value, clientRequestIdentityResolver, rateLimitProcessor)
+            : base(next, options?.Value, clientRequestIdentityResolver)
         {
+            _rateLimitProcessor = rateLimitProcessor;
             _logger = logger;
         }
+
+        protected override IRateLimitProcessor GetProcessor(ClientRequestIdentity identity) => _rateLimitProcessor;
 
         protected override void LogBlockedRequest(HttpContext httpContext, ClientRequestIdentity identity, RateLimitCounter counter, RateLimitRule rule)
         {

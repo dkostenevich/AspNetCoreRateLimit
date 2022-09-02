@@ -5,6 +5,9 @@ namespace AspNetCoreRateLimit
 {
     public static class Extensions
     {
+        private static readonly Regex PeriodValueRegex = new Regex(@"^\d+");
+        private static readonly Regex PeriodTypeRegex = new Regex(@"[a-z]+$");
+
         public static bool IsUrlMatch(this string source, string value, bool useRegex)
         {
             if (useRegex)
@@ -48,16 +51,19 @@ namespace AspNetCoreRateLimit
 
         public static TimeSpan ToTimeSpan(this string timeSpan)
         {
-            var l = timeSpan.Length - 1;
-            var value = timeSpan.Substring(0, l);
-            var type = timeSpan.Substring(l, 1);
+            var value = PeriodValueRegex.Match(timeSpan).Value;
+            var type = PeriodTypeRegex.Match(timeSpan).Value;
+            var parsedValue = double.Parse(value);
 
             return type switch
             {
-                "d" => TimeSpan.FromDays(double.Parse(value)),
-                "h" => TimeSpan.FromHours(double.Parse(value)),
-                "m" => TimeSpan.FromMinutes(double.Parse(value)),
-                "s" => TimeSpan.FromSeconds(double.Parse(value)),
+                "y" => TimeSpan.FromDays(parsedValue * 365),
+                "mo" => TimeSpan.FromDays(parsedValue * 30),
+                "w" => TimeSpan.FromDays(parsedValue * 7),
+                "d" => TimeSpan.FromDays(parsedValue),
+                "h" => TimeSpan.FromHours(parsedValue),
+                "m" => TimeSpan.FromMinutes(parsedValue),
+                "s" => TimeSpan.FromSeconds(parsedValue),
                 _ => throw new FormatException($"{timeSpan} can't be converted to TimeSpan, unknown type {type}"),
             };
         }
