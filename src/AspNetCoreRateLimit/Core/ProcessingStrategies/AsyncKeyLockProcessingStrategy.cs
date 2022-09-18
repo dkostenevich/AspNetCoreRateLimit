@@ -24,7 +24,7 @@ namespace AspNetCoreRateLimit
 
             var counter = new RateLimitCounter
             {
-                Timestamp = DateTime.UtcNow,
+                Timestamp = rule.GetIntervalStart(),
                 Count = increment
             };
 

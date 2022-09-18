@@ -67,5 +67,28 @@ namespace AspNetCoreRateLimit
                 _ => throw new FormatException($"{timeSpan} can't be converted to TimeSpan, unknown type {type}"),
             };
         }
+
+        public static DateTime GetIntervalStart(this RateLimitRule rule)
+        {
+            var interval = rule.PeriodTimespan.Value;
+
+            var now = DateTime.UtcNow;
+            DateTime intervalStart;
+            long numberOfIntervals;
+
+            if (rule.StartsFrom.HasValue)
+            {
+                var diff = now - rule.StartsFrom.Value;
+                numberOfIntervals = diff.Ticks / interval.Ticks;
+                intervalStart = rule.StartsFrom.Value.Add(TimeSpan.FromTicks(numberOfIntervals * interval.Ticks));
+            }
+            else
+            {
+                numberOfIntervals = now.Ticks / interval.Ticks;
+                intervalStart = new DateTime(numberOfIntervals * interval.Ticks, DateTimeKind.Utc);
+            }
+
+            return intervalStart;
+        }
     }
 }

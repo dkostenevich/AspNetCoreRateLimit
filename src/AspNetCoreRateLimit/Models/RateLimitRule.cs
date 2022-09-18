@@ -35,5 +35,10 @@ namespace AspNetCoreRateLimit
         /// If MonitorMode is true requests that exceed the limit are only logged, and will execute successfully.
         /// </summary>
         public bool MonitorMode { get; set; } = false;
+
+        /// <summary>
+        /// Date & Time when rule started work
+        /// </summary>
+        public DateTime? StartsFrom { get; set; }
     }
 }

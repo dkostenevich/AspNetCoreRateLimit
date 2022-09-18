@@ -28,14 +28,13 @@ namespace AspNetCoreRateLimit.Redis
         public async Task<RateLimitCounter> ProcessRequestAsync(ClientRequestIdentity requestIdentity, RateLimitRule rule, ICounterKeyBuilder counterKeyBuilder, RateLimitOptions rateLimitOptions, CancellationToken cancellationToken = default)
         {
             var counterId = counterKeyBuilder.Build(requestIdentity, rule);
-            return await IncrementAsync(counterId, rule.PeriodTimespan.Value, _config.RateIncrementer);
+            return await IncrementAsync(counterId, rule, _config.RateIncrementer);
         }
 
-        public async Task<RateLimitCounter> IncrementAsync(string counterId, TimeSpan interval, Func<double> rateIncrementer = null)
+        public async Task<RateLimitCounter> IncrementAsync(string counterId, RateLimitRule rule, Func<double> rateIncrementer = null)
         {
-            var now = DateTime.UtcNow;
-            var numberOfIntervals = now.Ticks / interval.Ticks;
-            var intervalStart = new DateTime(numberOfIntervals * interval.Ticks, DateTimeKind.Utc);
+            var interval = rule.PeriodTimespan.Value;
+            var intervalStart = rule.GetIntervalStart();
 
             _logger.LogDebug("Calling Lua script. {counterId}, {timeout}, {delta}", counterId, interval.TotalSeconds, 1D);
             var count = await _connectionMultiplexer.GetDatabase().ScriptEvaluateAsync(AtomicIncrement, new { key = new RedisKey(counterId), timeout = interval.TotalSeconds, delta = rateIncrementer?.Invoke() ?? 1D });

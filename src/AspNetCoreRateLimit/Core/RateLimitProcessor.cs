@@ -72,7 +72,8 @@ namespace AspNetCoreRateLimit
             }
             else
             {
-                reset = DateTime.UtcNow + (rule.PeriodTimespan ?? rule.Period.ToTimeSpan());
+                var intervalStart = rule.GetIntervalStart();
+                reset = intervalStart + (rule.PeriodTimespan ?? rule.Period.ToTimeSpan());
                 remaining = rule.Limit;
             }
 
