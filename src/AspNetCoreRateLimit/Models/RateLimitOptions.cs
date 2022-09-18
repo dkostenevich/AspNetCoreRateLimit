@@ -11,6 +11,8 @@ namespace AspNetCoreRateLimit
 
         public List<string> EndpointWhitelist { get; set; }
 
+        public bool CollectStatistics { get; set; }
+
         /// <summary>
         /// Gets or sets the HTTP header that holds the client identifier, by default is X-ClientId
         /// </summary>

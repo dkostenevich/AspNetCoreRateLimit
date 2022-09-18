@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace AspNetCoreRateLimit
 {
-    public class DistributedCacheClientPolicyStore : DistributedCacheRateLimitStore<ClientRateLimitPolicy>, IClientPolicyStore
+    public class DistributedCacheClientPolicyStore : DistributedCacheStore<ClientRateLimitPolicy>, IClientPolicyStore
     {
         private readonly ClientRateLimitOptions _options;
         private readonly ClientRateLimitPolicies _policies;

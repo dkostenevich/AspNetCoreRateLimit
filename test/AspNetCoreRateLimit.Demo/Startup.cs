@@ -31,7 +31,7 @@ namespace AspNetCoreRateLimit.Demo
 
             // register stores
             services.AddInMemoryRateLimiting();
-            //services.AddDistributedRateLimiting<AsyncKeyLockProcessingStrategy>();
+            //services.AddDistributedRateLimiting<ProcessingStrategy>();
             //services.AddDistributedRateLimiting<RedisProcessingStrategy>();
             //services.AddRedisRateLimiting();
             services.AddRateLimiting();

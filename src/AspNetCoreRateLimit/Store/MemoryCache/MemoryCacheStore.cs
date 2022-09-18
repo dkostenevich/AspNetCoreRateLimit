@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 
 namespace AspNetCoreRateLimit
 {
-    public class MemoryCacheRateLimitStore<T> : IRateLimitStore<T>
+    public class MemoryCacheStore<T> : IRateLimitStore<T>
     {
         private readonly IMemoryCache _cache;
 
-        public MemoryCacheRateLimitStore(IMemoryCache cache)
+        public MemoryCacheStore(IMemoryCache cache)
         {
             _cache = cache;
         }

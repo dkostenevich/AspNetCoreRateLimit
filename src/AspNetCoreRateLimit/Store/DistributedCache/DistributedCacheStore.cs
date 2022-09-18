@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace AspNetCoreRateLimit
 {
-    public class DistributedCacheRateLimitStore<T> : IRateLimitStore<T>
+    public class DistributedCacheStore<T> : IRateLimitStore<T>
     {
         private readonly IDistributedCache _cache;
 
-        public DistributedCacheRateLimitStore(IDistributedCache cache)
+        public DistributedCacheStore(IDistributedCache cache)
         {
             _cache = cache;
         }

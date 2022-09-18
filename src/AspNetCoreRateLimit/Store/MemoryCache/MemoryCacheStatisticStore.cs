@@ -5,21 +5,21 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace AspNetCoreRateLimit
 {
-    public class MemoryCacheRateLimitCounterStore : MemoryCacheStore<RateLimitCounter?>, IRateLimitCounterStore
+    public class MemoryCacheStatisticStore : MemoryCacheStore<double?>, IStatisticStore
     {
         private static readonly AsyncKeyLock AsyncLock = new AsyncKeyLock();
 
-        public MemoryCacheRateLimitCounterStore(IMemoryCache cache) : base(cache)
+        public MemoryCacheStatisticStore(IMemoryCache cache) : base(cache)
         {
         }
 
-        public async Task<RateLimitCounter> IncrementAsync(string id, double increment, RateLimitCounter initial, TimeSpan timeout, CancellationToken cancellationToken)
+        public async Task<double> IncrementAsync(string id, double increment, TimeSpan timeout, CancellationToken cancellationToken)
         {
             using (await AsyncLock.WriterLockAsync(id).ConfigureAwait(false))
             {
-                var value = await GetAsync(id, cancellationToken) ?? initial;
+                var value = await GetAsync(id, cancellationToken) ?? 0;
 
-                value.Count += increment;
+                value += increment;
 
                 await SetAsync(id, value, timeout, cancellationToken);
 

@@ -12,14 +12,15 @@ namespace AspNetCoreRateLimit
             services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
             services.AddSingleton<IClientPolicyStore, MemoryCacheClientPolicyStore>();
             services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
-            services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
+            services.AddSingleton<IStatisticStore, MemoryCacheStatisticStore>();
+            services.AddSingleton<IProcessingStrategy, ProcessingStrategy>();
             return services;
         }
 
         public static IServiceCollection AddDistributedRateLimiting(this IServiceCollection services)
         {
             services.AddDistributedRateLimitingStores();
-            services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
+            services.AddSingleton<IProcessingStrategy, ProcessingStrategy>();
             return services;
         }
 
@@ -36,6 +37,7 @@ namespace AspNetCoreRateLimit
             services.AddSingleton<IIpPolicyStore, DistributedCacheIpPolicyStore>();
             services.AddSingleton<IClientPolicyStore, DistributedCacheClientPolicyStore>();
             services.AddSingleton<IRateLimitCounterStore, DistributedCacheRateLimitCounterStore>();
+            services.AddSingleton<IStatisticStore, DistributedCacheStatisticStore>();
             return services;
         }
 
